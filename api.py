@@ -1,58 +1,97 @@
-import requests
+"""
+This module provides a function to retrieve animal information, including scientific name, accession number, and DNA
+sequence, based on the common name of the animal. It interacts with external APIs to fetch the required data and handles potential exceptions that may arise during the process.
 
+Functions:
+- get_animal_info(common: str) -> dict[str: str]: Retrieves the scientific name
+    and DNA sequence for a given common animal name.
+    It makes API calls to fetch the scientific name, accession number, and DNA sequence, and returns this information in a dictionary format.
+    If any errors occur during the API calls or JSON parsing, it returns a dictionary with "N/A" values for the scientific name, accession number, and DNA sequence.
+"""
+
+import json
+import requests
 from config import DNA_URL, SCI_URL, ACC_URL
 
-def scientific_name():
-
-    common = input("Enter the common name of the animal: ")
-
-    url = SCI_URL + common
 
 
-    response = requests.get(url)
-    response.raise_for_status()
+def get_animal_info(common) -> dict[str: str]:
+    """
+    Retrieves the scientific name and DNA sequence for a given common animal name.
 
-    data = response.json()
-    return data[0]["scientificName"], data[0]["taxId"]
+    Args:
+        common (str): The common name of the animal.
 
-def accession_number(tax_id):
-
-    url = ACC_URL
-
-    params = {
-        "result": "sequence",
-        "query": f"tax_eq({tax_id})",
-        "fields": "accession",
-        "format": "json",
-        "limit": 1
-    }
-
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-
-    data = response.json()
-    return data[0]["accession"]
+    :return
+        dict[str: str]: A dictionary containing the common name, scientific name, accession number, and DNA sequence of the animal.
+        If any errors occur during the API calls or JSON parsing, the scientific name, accession number, and DNA sequence will be set to "N/A".
+    """
 
 
-def dna_sequence(accession):
-
-    url = DNA_URL + accession
-
-    response = requests.get(url)
-    response.raise_for_status()
-
-    return response.text
-
-def get_dna_from_common_name():
-    return dna_sequence(accession_number(scientific_name()))
+    try:
+        url = SCI_URL + common
 
 
-sci, tax = scientific_name()
+        response = requests.get(url)
+        response.raise_for_status()
 
-acc = accession_number(tax)
+        data_scientific = response.json()
+        print(data_scientific)
+        scientifi_name = data_scientific[0]["scientificName"]
+        tax_id = data_scientific[0]["taxId"]
 
-dna = dna_sequence(acc)
+        url = ACC_URL
 
-print(sci, tax)
-print(acc)
-print(dna[:200])
+        params = {
+            "result": "sequence",
+            "query": f"tax_eq({tax_id})",
+            "fields": "accession",
+            "format": "json",
+            "limit": 1
+        }
+
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+
+        data_acc = response.json()
+        accession = data_acc[0]["accession"]
+
+
+        url = DNA_URL + accession
+
+        response = requests.get(url)
+        response.raise_for_status()
+
+        dna_sequence =  response.text
+
+        dna_sequence = dna_sequence.split("\n")
+        dna_sequence = "".join(dna_sequence[1:])
+
+        # print(dna_sequence)
+
+        animal_info = {
+            "common_name": common,
+            "scientific_name": scientifi_name,
+            "accession": accession,
+            "dna_sequence": dna_sequence
+        }
+
+        return animal_info
+
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return {
+            "common_name": common,
+            "scientific_name": "N/A",
+            "accession": "N/A",
+            "dna_sequence": "N/A"
+        }
+
+    except json.decoder.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return {
+            "common_name": common,
+            "scientific_name": "N/A",
+            "accession": "N/A",
+            "dna_sequence": "N/A"
+        }
