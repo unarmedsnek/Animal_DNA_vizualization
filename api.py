@@ -37,46 +37,50 @@ def get_animal_info(common) -> dict[str: str]:
 
         data_scientific = response.json()
         print(data_scientific)
-        scientifi_name = data_scientific[0]["scientificName"]
-        tax_id = data_scientific[0]["taxId"]
+        if not data_scientific:
+            return None
+        else:
+            scientific_name = data_scientific[0]["scientificName"]
+            tax_id = data_scientific[0]["taxId"]
 
-        url = ACC_URL
+            url = ACC_URL
 
-        params = {
-            "result": "sequence",
-            "query": f"tax_eq({tax_id})",
-            "fields": "accession",
-            "format": "json",
-            "limit": 1
-        }
+            params = {
+                "result": "sequence",
+                "query": f"tax_eq({tax_id})",
+                "fields": "accession",
+                "format": "json",
+                "limit": 1
+            }
 
-        response = requests.get(url, params=params)
-        response.raise_for_status()
+            response = requests.get(url, params=params)
+            response.raise_for_status()
 
-        data_acc = response.json()
-        accession = data_acc[0]["accession"]
+            data_acc = response.json()
+            accession = data_acc[0]["accession"]
 
 
-        url = DNA_URL + accession
+            url = DNA_URL + accession
 
-        response = requests.get(url)
-        response.raise_for_status()
+            response = requests.get(url)
+            response.raise_for_status()
 
-        dna_sequence =  response.text
+            dna_sequence =  response.text
 
-        dna_sequence = dna_sequence.split("\n")
-        dna_sequence = "".join(dna_sequence[1:])
+            dna_sequence = dna_sequence.split("\n")
+            dna_sequence = "".join(dna_sequence[1:])
 
-        # print(dna_sequence)
+            # print(dna_sequence)
 
-        animal_info = {
-            "common_name": common,
-            "scientific_name": scientifi_name,
-            "accession": accession,
-            "dna_sequence": dna_sequence
-        }
+            animal_info = {
+                "common_name": common,
+                "scientific_name": scientific_name,
+                "accession": accession,
+                "dna_sequence": dna_sequence
+            }
 
-        return animal_info
+            return animal_info
+
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")

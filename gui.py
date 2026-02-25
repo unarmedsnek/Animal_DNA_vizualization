@@ -87,15 +87,21 @@ def search_animal():
         animal_data = db.db_find(common_name)
     else:
         animal_data = api.get_animal_info(common_name)
-        db.db_insert(animal_data)
+        if animal_data is None:
+            dpg.set_value("scientific_name_text", "Scientific Name: not found try a more specific name")
+            dpg.set_value("dna_sequence_text", "DNA Sequence: N/A")
+            dpg.set_value("dna_str", "")
+            return
+        else:
+            db.db_insert(animal_data)
 
-    dpg.set_value("scientific_name_text", f"Scientific Name: {animal_data['scientific_name']}")
-    dpg.set_value("dna_sequence_text", f"DNA Sequence: {animal_data['dna_sequence']}")
-    dpg.set_value("dna_str", animal_data['dna_sequence'])
+        dpg.set_value("scientific_name_text", f"Scientific Name: {animal_data['scientific_name']}")
+        dpg.set_value("dna_sequence_text", f"DNA Sequence: {animal_data['dna_sequence']}")
+        dpg.set_value("dna_str", animal_data['dna_sequence'])
 
-    if not is_animating:
-        is_animating = True
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, on_frame)
+        if not is_animating:
+            is_animating = True
+            dpg.set_frame_callback(dpg.get_frame_count() + 1, on_frame)
 
 
 def gui_init():
@@ -120,7 +126,7 @@ def gui_init():
 
                 dpg.add_separator()
 
-                dpg.add_text("Scientific Name: ", tag="scientific_name_text")
+                dpg.add_text("Scientific Name: ", tag="scientific_name_text", wrap=300)
                 dpg.add_text("DNA Sequence: ", tag="dna_sequence_text")
 
 
