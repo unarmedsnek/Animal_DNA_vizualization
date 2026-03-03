@@ -77,31 +77,63 @@ def on_frame():
     dpg.set_frame_callback(dpg.get_frame_count() + 1, on_frame)
 
 
+# python
 def search_animal():
-    """Handles the search button click event, retrieves animal information from the database or API, and updates the GUI with the retrieved data."""
-
+    """Handles the search button click: check DB, fallback to API, update UI and start animation."""
     global is_animating
     common_name = dpg.get_value("animal_input")
+    if not common_name:
+        return
 
-    if db.db_find(common_name) is not None:
-        animal_data = db.db_find(common_name)
-    else:
-        animal_data = api.get_animal_info(common_name)
+    common_key = common_name.strip().lower()
+
+    # single DB lookup
+    try:
+        record = db.db_find(common_key)
+    except Exception as e:
+        dpg.set_value("scientific_name_text", f"Scientific Name: error accessing DB")
+        dpg.set_value("dna_sequence_text", "DNA Sequence: N/A")
+        dpg.set_value("dna_str", "")
+        return
+
+    animal_data = None
+    if record is not None:
+        # assume record is a dict; adapt here if your db returns a tuple/list
+        if isinstance(record, dict):
+            animal_data = record
+        else:
+            # try to handle common tuple forms: (common, scientific, dna)
+            try:
+                animal_data = {
+                    "scientific_name": record[1],
+                    "dna_sequence": record[2]
+                }
+            except Exception:
+                animal_data = None
+
+    if animal_data is None:
+        animal_data = api.get_animal_info(common_key)
         if animal_data is None:
-            dpg.set_value("scientific_name_text", "Scientific Name: not found try a more specific name")
+            dpg.set_value("scientific_name_text", "Scientific Name: not found, try a more specific name")
             dpg.set_value("dna_sequence_text", "DNA Sequence: N/A")
             dpg.set_value("dna_str", "")
             return
-        else:
+        # cache the fetched result
+        try:
             db.db_insert(animal_data)
+        except Exception:
+            # ignore DB insert failures but continue showing the result
+            pass
 
-        dpg.set_value("scientific_name_text", f"Scientific Name: {animal_data['scientific_name']}")
-        dpg.set_value("dna_sequence_text", f"DNA Sequence: {animal_data['dna_sequence']}")
-        dpg.set_value("dna_str", animal_data['dna_sequence'])
+    # update UI for both cached and fetched results
+    dpg.set_value("scientific_name_text", f"Scientific Name: {animal_data.get('scientific_name', 'N/A')}")
+    dpg.set_value("dna_sequence_text", f"DNA Sequence: {animal_data.get('dna_sequence', 'N/A')}")
+    dpg.set_value("dna_str", animal_data.get('dna_sequence', ""))
 
-        if not is_animating:
-            is_animating = True
-            dpg.set_frame_callback(dpg.get_frame_count() + 1, on_frame)
+    # start animation if not already running
+    if not is_animating:
+        is_animating = True
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, on_frame)
 
 
 def gui_init():
